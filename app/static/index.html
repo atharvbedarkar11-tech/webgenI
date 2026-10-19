@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGenAI - Multi-Agent Data Engineering Browser</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#1f2433;--mut:#6b7285;--acc:#4f46e5;--ok:#16a34a;--warn:#d97706;--err:#dc2626;--line:#e5e7ef}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--acc);color:#fff;padding:16px 24px}header h1{margin:0;font-size:20px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
+main{max-width:1100px;margin:20px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:16px}
+textarea{width:100%;min-height:70px;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 18px;font:inherit;cursor:pointer}
+button.sec{background:#e5e7ef;color:var(--ink)}button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.chip{font-size:12px;background:#eef;border-radius:99px;padding:4px 10px;cursor:pointer}
+.agents{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ag{border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;text-align:center}
+.ag b{display:block}.ag.done{border-color:var(--ok);background:#f0fdf4}.ag.run{border-color:var(--acc);background:#eef}
+.ag.err{border-color:var(--err);background:#fef2f2}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+th{background:#fafbff;position:sticky;top:0}.scroll{max-height:300px;overflow:auto}
+.log{font-family:Consolas,monospace;font-size:12px;max-height:220px;overflow:auto;background:#0f172a;color:#cbd5e1;padding:10px;border-radius:8px}
+.log .warn{color:#fbbf24}.log .error{color:#f87171}.log .ok b{color:#86efac}
+.score{font-size:34px;font-weight:700}.pass{color:var(--ok)}.fail{color:var(--err)}
+ul{margin:6px 0 0 18px;padding:0}li{margin:4px 0;font-size:14px}
+.bar{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0}.bar span.l{width:130px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar i{display:block;height:14px;background:var(--acc);border-radius:3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:800px){.grid2,.agents{grid-template-columns:1fr 1fr}}
+.hidden{display:none}
+</style></head><body>
+<header><h1>WebGenAI</h1><p>AI-Powered Multi-Agent Data Engineering Web-browser (prototype)</p></header>
+<main>
+<div class="card">
+  <h2>1. Ask in natural language</h2>
+  <textarea id="req">Collect and analyze the data table from http://127.0.0.1:8000/demo/countries.html and give me insights</textarea>
+  <div class="row">
+    <button id="go">Run workflow</button>
+    <span class="chip" onclick="ex('Collect and analyze the data table from '+location.origin+'/demo/countries.html and give me insights')">Demo: countries (local)</span>
+    <span class="chip" onclick="ex('Extract table 1 from https://en.wikipedia.org/wiki/List_of_largest_cities and analyze it')">Wikipedia: largest cities</span>
+  </div>
+</div>
+
+<div id="approval" class="card hidden" style="border-color:var(--warn)">
+  <h2>Human approval required</h2><p id="apmsg"></p>
+  <button id="approve">Approve and continue</button> <button class="sec" onclick="this.parentElement.classList.add('hidden')">Reject</button>
+</div>
+
+<div class="card"><h2>2. Agent pipeline</h2>
+  <div class="agents">
+    <div class="ag" id="a1"><b>1. Planner</b>Intent &amp; planning</div>
+    <div class="ag" id="a2"><b>2. Web Agent</b>Research &amp; extraction</div>
+    <div class="ag" id="a3"><b>3. Data Agent</b>Clean &amp; transform</div>
+    <div class="ag" id="a4"><b>4. Analysis Agent</b>Analyze &amp; validate</div>
+  </div>
+  <div class="log" id="log" style="margin-top:12px">Waiting for a request...</div>
+</div>
+
+<div id="out" class="hidden">
+  <div class="grid2">
+    <div class="card"><h2>Data quality (validation)</h2><div class="score" id="score"></div><div id="checks"></div></div>
+    <div class="card"><h2>Insights</h2><ul id="insights"></ul><h2 style="margin-top:14px">Cleaning steps</h2><ul id="cleaning"></ul></div>
+  </div>
+  <div class="card"><h2>Chart</h2><div id="chart"></div></div>
+  <div class="card"><h2>Raw extracted data (first rows)</h2><div class="scroll" id="raw"></div></div>
+  <div class="card"><h2>Clean dataset <a id="dl" href="#" style="font-size:13px;margin-left:10px">Download CSV</a></h2><div class="scroll" id="clean"></div></div>
+  <div class="card"><h2>Summary statistics</h2><div class="scroll" id="sum"></div></div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function ex(t){$('req').value=t}
+function tbl(rows,cols){if(!rows||!rows.length)return'<i>No data</i>';cols=cols||Object.keys(rows[0]);
+ return '<table><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(r[c]==null?'':r[c])+'</td>').join('')+'</tr>').join('')+'</table>'}
+function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+function setAg(state){['a1','a2','a3','a4'].forEach((id,i)=>{$(id).className='ag '+(state[i]||'')})}
+function showLog(l){$('log').innerHTML=l.map(e=>`<div class="${e.status}">[${e.time}] <b>${e.agent}</b>: ${esc(e.message)}</div>`).join('')}
+
+async function run(approved){
+  $('go').disabled=true;$('out').classList.add('hidden');$('approval').classList.add('hidden');
+  setAg(['run']);$('log').textContent='Running...';
+  let d;
+  try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:$('req').value,approved})});d=await r.json()}
+  catch(e){$('log').textContent='Server error: '+e;$('go').disabled=false;return}
+  showLog(d.logs||[]);$('go').disabled=false;
+  const agents=new Set((d.logs||[]).filter(l=>l.status!='error').map(l=>l.agent));
+  const st=['Planner','WebAgent','DataAgent','AnalysisAgent'].map(a=>agents.has(a)?'done':'');
+  if(d.status=='needs_approval'){setAg(['done','']);$('apmsg').textContent=d.message+' ('+d.plan.url+')';$('approval').classList.remove('hidden');return}
+  if(d.status=='error'){const k=st.indexOf('');setAg(st.map((s,i)=>i==k?'err':s));return}
+  setAg(st);$('out').classList.remove('hidden');
+  $('score').textContent=d.validation.quality_score+' / 100';
+  $('checks').innerHTML=d.validation.checks.map(c=>`<div class="${c.pass?'pass':'fail'}">${c.pass?'✔':'✘'} ${c.check}: ${c.value}</div>`).join('');
+  $('insights').innerHTML=d.analysis.insights.map(i=>'<li>'+esc(i)+'</li>').join('');
+  $('cleaning').innerHTML=d.cleaning.map(i=>'<li>'+esc(i)+'</li>').join('');
+  const ch=d.analysis.chart;
+  $('chart').innerHTML=ch?('<b>'+esc(ch.title)+'</b>'+(()=>{const m=Math.max(...ch.values);return ch.labels.map((l,i)=>`<div class="bar"><span class="l">${esc(l)}</span><i style="width:${Math.max(2,ch.values[i]/m*60)}%"></i><span>${ch.values[i].toLocaleString()}</span></div>`).join('')})()):'<i>No numeric data to chart</i>';
+  $('raw').innerHTML=tbl(d.raw_preview,d.raw_columns);
+  $('clean').innerHTML=tbl(d.clean_preview,d.columns);
+  $('sum').innerHTML=tbl(d.analysis.summary);
+  $('dl').href=d.download;
+}
+$('go').onclick=()=>run(false);$('approve').onclick=()=>run(true);
+</script></body></html>

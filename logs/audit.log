@@ -1,0 +1,14 @@
+{"run": "d9c5e021", "time": "16:54:09", "agent": "Planner", "status": "ok", "message": "Received request, building plan"}
+{"run": "d9c5e021", "time": "16:54:09", "agent": "Planner", "status": "ok", "message": "Plan ready: 4 steps, target http://127.0.0.1:8000/demo/countries.html"}
+{"run": "d9c5e021", "time": "16:54:09", "agent": "Security", "status": "ok", "message": "Domain approved (allow-list)"}
+{"run": "d9c5e021", "time": "16:54:09", "agent": "WebAgent", "status": "ok", "message": "Fetching page and extracting data"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "WebAgent", "status": "ok", "message": "Found 1 table(s); using table 1. Extracted 13 rows x 5 cols (table mode)"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Cleaning and transforming"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Normalized column names to snake_case"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Trimmed whitespace and removed footnote markers"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Converted to numeric: literacy"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Removed 1 duplicate row(s)"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "DataAgent", "status": "ok", "message": "Filled 2 missing value(s) (median for numbers, 'Unknown' for text)"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "AnalysisAgent", "status": "ok", "message": "Running analysis and validation"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "AnalysisAgent", "status": "ok", "message": "Data quality score: 96.2/100"}
+{"run": "d9c5e021", "time": "16:54:10", "agent": "Orchestrator", "status": "ok", "message": "Saved dataset to outputs/d9c5e021.csv"}
